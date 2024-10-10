@@ -11,7 +11,6 @@ inputs:
   xcode-version:
     description: 'Xcode version to use'
     required: true
-
 runs:
   using: 'composite'
   steps:
@@ -21,16 +20,14 @@ runs:
       run: |
         brew tap PreternaturalAI/preternatural
         brew install preternatural
-
     - name: Cache derived data
       uses: actions/cache@v3
       if: ${{ !env.ACT }} # Skipping when run locally.
       with:
-        path: ${{ inputs.derived_data_path || '~/Library/Developer/Xcode/DerivedData' }}
+        path: ${{ inputs.derived_data_path || '$HOME/Library/Developer/Xcode/DerivedData' }}
         key: ${{ runner.os }}-derived-data-xcode-${{ inputs.xcode-version }}
         restore-keys: |
           ${{ runner.os }}-derived-data-xcode-${{ inputs.xcode-version }}
-
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
@@ -50,8 +47,8 @@ runs:
         echo "Executing command: $COMMAND"
         eval $COMMAND
       continue-on-error: true
-
     - name: Clear caches and retry build
+      id: retry_build
       if: steps.build.outcome == 'failure'
       shell: bash
       run: |
@@ -62,8 +59,8 @@ runs:
         
         # Clear SwiftPM caches
         if [ "${{ !env.ACT }}" == "true" ]; then
-          rm -rf ~/Library/org.swift.swiftpm
-          rm -rf ~/Library/Caches/org.swift.swiftpm
+          rm -rf $HOME/Library/org.swift.swiftpm
+          rm -rf $HOME/Library/Caches/org.swift.swiftpm
         fi
         
         # Force package update
@@ -75,7 +72,7 @@ runs:
         if [ -n "${{ inputs.derived_data_path }}" ]; then
           rm -rf "${{ inputs.derived_data_path }}"
         else
-          rm -rf ~/Library/Developer/Xcode/DerivedData
+          rm -rf $HOME/Library/Developer/Xcode/DerivedData
         fi
         
         # Retry build
@@ -94,3 +91,35 @@ runs:
         
         # Exit with the build's exit code
         exit $BUILD_EXIT_CODE
+    
+    - name: Find and copy xcactivity log
+      if: failure()
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.derived_data_path }}" ]; then
+          DERIVED_DATA_PATH="${{ inputs.derived_data_path }}"
+        else
+          DERIVED_DATA_PATH="$HOME/Library/Developer/Xcode/DerivedData"
+        fi
+        echo "Searching for logs in: $DERIVED_DATA_PATH"
+        LATEST_LOG=$(find "$DERIVED_DATA_PATH" -name "*.xcactivitylog" -type f -print0 | xargs -0 ls -t | head -n 1)
+        if [ -n "$LATEST_LOG" ]; then
+          mkdir -p ./artifacts
+          cp "$LATEST_LOG" ./artifacts/build.xcactivitylog
+          echo "Copied $LATEST_LOG to ./artifacts/build.xcactivitylog"
+          
+          # Debug information
+          ls -l ./artifacts/build.xcactivitylog
+          file ./artifacts/build.xcactivitylog
+          du -sh ./artifacts/build.xcactivitylog
+        else
+          echo "No xcactivitylog found in $DERIVED_DATA_PATH"
+        fi
+      
+    - name: Upload xcactivity log
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: xcactivity-log
+        path: ./artifacts/build.xcactivitylog
+        if-no-files-found: error  # Changed from 'warn' to 'error'
