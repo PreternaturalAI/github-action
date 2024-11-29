@@ -17,6 +17,8 @@ Runs the Preternatural CLI build command on your repositories. The xcactivitylog
     reuse_derived_data: true
 ```
 
+Note: The `derived_data_path` input is now sanitized and validated to ensure it does not contain invalid or unsafe paths.
+
 ## `preternatural-archive-action`
 Archives and notarizes macOS applications using the Preternatural CLI.
 

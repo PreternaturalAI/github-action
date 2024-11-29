@@ -115,18 +115,37 @@ runs:
       id: build
       shell: bash
       run: |
+        sanitize_and_validate_path() {
+          local path="$1"
+          if [[ "$path" =~ [^a-zA-Z0-9/_-] ]]; then
+            echo "Invalid characters in path: $path"
+            exit 1
+          fi
+          if [[ "$path" == *".."* ]]; then
+            echo "Path traversal detected: $path"
+            exit 1
+          fi
+          echo "$path"
+        }
+
         echo "==== Execute Preternatural Build Command ===="
         PLATFORMS=$(echo '${{ inputs.platforms }}' | tr -d '[]' | sed 's/, /,/g')
         CONFIGURATIONS=$(echo '${{ inputs.configurations }}' | tr -d '[]' | sed 's/, /,/g')
-        DERIVED_DATA_PATH=${{ github.workspace }}/${{ inputs.derived_data_path }}
+        DERIVED_DATA_PATH=$(sanitize_and_validate_path "${{ github.workspace }}/${{ inputs.derived_data_path }}")
 
         echo "Processed values:"
         echo "PLATFORMS: $PLATFORMS"
         echo "CONFIGURATIONS: $CONFIGURATIONS"
         echo "DERIVED_DATA_PATH: $DERIVED_DATA_PATH"
 
-        echo "Executing command: preternatural build --derived-data-path $(printf %q "$DERIVED_DATA_PATH") --platforms $PLATFORMS --configurations $CONFIGURATIONS"
-        preternatural build --derived-data-path $(printf %q "$DERIVED_DATA_PATH") --platforms $PLATFORMS --configurations $CONFIGURATIONS
+        if [ -z "$DERIVED_DATA_PATH" ]; then
+          echo "Warning: Invalid derived data path. Falling back to clean build."
+          echo "Executing command: preternatural build --platforms $PLATFORMS --configurations $CONFIGURATIONS"
+          preternatural build --platforms $PLATFORMS --configurations $CONFIGURATIONS
+        else
+          echo "Executing command: preternatural build --derived-data-path $(printf %q "$DERIVED_DATA_PATH") --platforms $PLATFORMS --configurations $CONFIGURATIONS"
+          preternatural build --derived-data-path $(printf %q "$DERIVED_DATA_PATH") --platforms $PLATFORMS --configurations $CONFIGURATIONS
+        fi
         echo "Command execution completed with status: $?"
         echo "=================================="
         

@@ -22,7 +22,7 @@ The Build Action runs Preternatural build commands on repositories with specifie
 | `xcode-version` | Xcode version to use for building | No | `latest-stable` |
 | `platforms` | Target platforms to build for | No | `["macOS"]` |
 | `configurations` | Build configurations to use | No | `["debug", "release"]` |
-| `derived_data_path` | Path to the derived data folder | No | `DerivedData/ProjectBuild` |
+| `derived_data_path` | Path to the derived data folder (sanitized and validated) | No | `DerivedData/ProjectBuild` |
 | `reuse_derived_data` | Option to reuse derived data | No | `true` |
 
 ### Build Action Examples
@@ -49,6 +49,8 @@ steps:
       configurations: '["debug"]'
       derived_data_path: 'CustomDerivedData'
 ```
+
+Note: The `derived_data_path` input is now sanitized and validated to ensure it does not contain invalid or unsafe paths.
 
 #### All Platforms Release Build
 ```yaml
