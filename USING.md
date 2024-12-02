@@ -76,6 +76,18 @@ steps:
       reuse_derived_data: false
 ```
 
+#### Build with xcactivitylog Steps
+```yaml
+steps:
+  - uses: PreternaturalAI/preternatural-build-action@v1
+    with:
+      xcode-version: 'latest-stable'
+      platforms: '["macOS"]'
+      configurations: '["debug", "release"]'
+      derived_data_path: 'DerivedData/ProjectBuild'
+      reuse_derived_data: true
+```
+
 ## Archive & Notarize Action
 
 The Archive & Notarize Action creates and notarizes a macOS application using the Preternatural CLI.
